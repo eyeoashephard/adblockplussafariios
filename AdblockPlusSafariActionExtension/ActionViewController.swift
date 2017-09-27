@@ -61,7 +61,7 @@ class ActionViewController: UIViewController {
         super.viewDidAppear(animated)
         UIView.transition(with: self.view,
                           duration: 0.4,
-                          options: .transitionCrossDissolve,
+                          options: [.transitionCrossDissolve, .showHideTransitionViews],
                           animations: {
                             self.view.isHidden = false
         },
