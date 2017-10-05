@@ -20,43 +20,44 @@ import SafariServices
 import UIKit
 
 class ActionViewController: UIViewController {
-    
+
     var adblockPlus: AdblockPlusShared!
     var website: String?
     var components: URLComponents!
-    
+
     @IBOutlet weak var descriptionField: UITextField!
     @IBOutlet weak var addressField: UITextField!
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         adblockPlus = AdblockPlusShared.init()
-        for item in extensionContext?.inputItems as! [NSExtensionItem] {
+        for item in (extensionContext?.inputItems as? [NSExtensionItem])! {
             guard let attachments = item.attachments  else { continue }
-            for itemProvider in attachments as! [NSItemProvider] {
+            for itemProvider in (attachments as? [NSItemProvider])! {
                 let typeIdentifier = kUTTypePropertyList as String
                 if itemProvider.hasItemConformingToTypeIdentifier(typeIdentifier) {
                     weak var weakSelf = self
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
                                           options: nil,
                                           completionHandler: { (item, error) in
+                                            if error != nil { return }
                                             DispatchQueue.main.async {
-                                                let preprocessingResults = item as! NSDictionary
-                                                let results = preprocessingResults[NSExtensionJavaScriptPreprocessingResultsKey] as! NSDictionary
-                                                let baseURI = results["baseURI"] as? String
+                                                let preprocessingResults = item as? NSDictionary
+                                                let results = preprocessingResults![NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary
+                                                let baseURI = results!["baseURI"] as? String
                                                 let hostname = baseURI! as NSString
                                                 let whitelistedHostname = hostname.whitelistedHostname()
                                                 weakSelf?.website = baseURI
                                                 weakSelf?.addressField.text = whitelistedHostname
-                                                weakSelf?.descriptionField.text = results["title"] as? String
+                                                weakSelf?.descriptionField.text = results!["title"] as? String
                                             }
                     })
                 }
             }
         }
     }
-    
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         UIView.transition(with: self.view,
@@ -67,18 +68,18 @@ class ActionViewController: UIViewController {
         },
                           completion: nil)
     }
-    
+
     @IBAction func onCancelButtonTouched(_ sender: Any) {
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         return
     }
-    
+
     @IBAction func onDoneButtonTouched(_ sender: Any) {
         if self.website == nil {
             extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
             return
         }
-        
+
         let whitelistedSite = self.website! as NSString
         let whitelistedWebsite = whitelistedSite.whitelistedHostname()
         let time = Date.timeIntervalSinceReferenceDate
@@ -87,12 +88,13 @@ class ActionViewController: UIViewController {
         components.host = "localhost"
         components.path = String.init(format: "/invalidimage-%d.png", Int(time))
         components.query = String.init(format: "website=%@", whitelistedWebsite!)
-        
+
         extensionContext?.completeRequest(returningItems: nil, completionHandler: { (expired) in
+            if expired == true { return }
             self.completeAndExit()
         })
     }
-    
+
     func completeAndExit() {
         // Session must be created with new identifier, see Apple documentation:
         // https://developer.apple.com/library/prerelease/ios/documentation/General/Conceptual/ExtensibilityPG/ExtensionScenarios.html
@@ -103,12 +105,12 @@ class ActionViewController: UIViewController {
         let identifier = adblockPlus.generateBackgroundNotificationSessionConfigurationIdentifier()
         let session = adblockPlus.backgroundNotificationSession(withIdentifier: identifier,
                                                                 delegate: nil)
-        
+
         let url = components.url
         let task = session.downloadTask(with: url!)
         task.resume()
         session.finishTasksAndInvalidate()
         exit(0)
     }
-    
+
 }
