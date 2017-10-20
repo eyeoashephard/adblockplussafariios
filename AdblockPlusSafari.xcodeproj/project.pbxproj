@@ -1207,7 +1207,7 @@
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "AdblockPlusSafariActionExtension/AdblockPlusSafariActionExtension-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 				VALID_ARCHS = arm64;
 			};
 			name = Debug;
@@ -1228,7 +1228,7 @@
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "AdblockPlusSafariActionExtension/AdblockPlusSafariActionExtension-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 				VALID_ARCHS = arm64;
 			};
 			name = "Devbuild Debug";
@@ -1247,7 +1247,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "AdblockPlusSafariActionExtension/AdblockPlusSafariActionExtension-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 				VALID_ARCHS = arm64;
 			};
 			name = Release;
@@ -1267,7 +1267,7 @@
 				PROVISIONING_PROFILE_SPECIFIER = "Adblock Plus Action Extension Devbuild In House";
 				SKIP_INSTALL = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "AdblockPlusSafariActionExtension/AdblockPlusSafariActionExtension-Bridging-Header.h";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 				VALID_ARCHS = arm64;
 			};
 			name = "Devbuild Release";
