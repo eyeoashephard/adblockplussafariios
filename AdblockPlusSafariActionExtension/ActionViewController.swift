@@ -21,9 +21,9 @@ import UIKit
 
 class ActionViewController: UIViewController {
 
-    var adblockPlus: AdblockPlusShared!
+    var adblockPlus: AdblockPlusShared?
     var website: String?
-    var components: URLComponents!
+    var components: URLComponents?
 
     @IBOutlet weak var descriptionField: UITextField!
     @IBOutlet weak var addressField: UITextField!
@@ -31,26 +31,31 @@ class ActionViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        adblockPlus = AdblockPlusShared.init()
-        for item in (extensionContext?.inputItems as? [NSExtensionItem])! {
-            guard let attachments = item.attachments  else { continue }
-            for itemProvider in (attachments as? [NSItemProvider])! {
+        adblockPlus = AdblockPlusShared()
+
+        guard let uwExtension = (extensionContext?.inputItems as? [NSExtensionItem]) else { return }
+        for item in uwExtension {
+            guard let attachments = item.attachments else { continue }
+            guard let uwAttachments = (attachments as? [NSItemProvider]) else { return }
+            for itemProvider in uwAttachments {
                 let typeIdentifier = kUTTypePropertyList as String
                 if itemProvider.hasItemConformingToTypeIdentifier(typeIdentifier) {
-                    weak var weakSelf = self
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
                                           options: nil,
-                                          completionHandler: { (item, error) in
+                                          completionHandler: { [weak self] item, error in
                                             if error != nil { return }
                                             DispatchQueue.main.async {
-                                                let preprocessingResults = item as? NSDictionary
-                                                let results = preprocessingResults![NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary
-                                                let baseURI = results!["baseURI"] as? String
-                                                let hostname = baseURI! as NSString
+
+                                                guard let preprocessingResults = item as? NSDictionary else { return }
+                                                let results = preprocessingResults[NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary
+                                                guard let uwResults = results else { return }
+                                                let baseURI = uwResults["baseURI"] as? String
+                                                guard let uwBaseURI = baseURI else { return }
+                                                let hostname = uwBaseURI as NSString
                                                 let whitelistedHostname = hostname.whitelistedHostname()
-                                                weakSelf?.website = baseURI
-                                                weakSelf?.addressField.text = whitelistedHostname
-                                                weakSelf?.descriptionField.text = results!["title"] as? String
+                                                self?.website = uwBaseURI
+                                                self?.addressField.text = whitelistedHostname
+                                                self?.descriptionField.text = uwResults["title"] as? String
                                             }
                     })
                 }
@@ -60,7 +65,7 @@ class ActionViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        UIView.transition(with: self.view,
+        UIView.transition(with: view,
                           duration: 0.4,
                           options: [.transitionCrossDissolve, .showHideTransitionViews],
                           animations: {
@@ -69,28 +74,27 @@ class ActionViewController: UIViewController {
                           completion: nil)
     }
 
-    @IBAction func onCancelButtonTouched(_ sender: Any) {
+    @IBAction func onCancelButtonTouched(_ sender: UIButton) {
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
         return
     }
 
-    @IBAction func onDoneButtonTouched(_ sender: Any) {
-        if self.website == nil {
+    @IBAction func onDoneButtonTouched(_ sender: UIButton) {
+        if website == nil {
             extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
             return
         }
 
-        let whitelistedSite = self.website! as NSString
-        let whitelistedWebsite = whitelistedSite.whitelistedHostname()
+        guard let uwWebsite = website as NSString? else { return }
+        let whitelistedWebsite = uwWebsite.whitelistedHostname()
         let time = Date.timeIntervalSinceReferenceDate
-        components = URLComponents.init()
-        components.scheme = "http"
-        components.host = "localhost"
-        components.path = String.init(format: "/invalidimage-%d.png", Int(time))
-        components.query = String.init(format: "website=%@", whitelistedWebsite!)
+        components = URLComponents()
+        components?.scheme = "http"
+        components?.host = "localhost"
+        components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
+        components?.query = String.init(format: "website=%@", whitelistedWebsite!)
 
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: { (expired) in
-            if expired == true { return }
+        extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
             self.completeAndExit()
         })
     }
@@ -102,15 +106,19 @@ class ActionViewController: UIViewController {
         // Because only one process can use a background session at a time,
         // you need to create a different background session for the containing app and each of its app extensions.
         // (Each background session should have a unique identifier.)
-        let identifier = adblockPlus.generateBackgroundNotificationSessionConfigurationIdentifier()
-        let session = adblockPlus.backgroundNotificationSession(withIdentifier: identifier,
-                                                                delegate: nil)
+        guard let uwABP = adblockPlus else { return }
+        let identifier = uwABP.generateBackgroundNotificationSessionConfigurationIdentifier()
+        let session = uwABP.backgroundNotificationSession(withIdentifier: identifier, delegate: nil)
 
-        let url = components.url
-        let task = session.downloadTask(with: url!)
+        // Fake URL, request will definitely fail, hopefully the invalid url will be denied by iOS itself.
+        guard let uwURL = components?.url else { return }
+
+        // Start download request with fake URL
+        let task = session.downloadTask(with: uwURL)
         task.resume()
         session.finishTasksAndInvalidate()
+
+        // Let the host application to handle the result of download task
         exit(0)
     }
-
 }

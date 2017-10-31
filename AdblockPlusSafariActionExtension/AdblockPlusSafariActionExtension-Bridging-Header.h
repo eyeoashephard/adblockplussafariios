@@ -16,5 +16,5 @@
  */
 
 #import "AdblockPlusShared.h"
-#import "NSString+AdblockPlus.h"
 #import "NSAttributedString+TextRenderer.h"
+#import "NSString+AdblockPlus.h"
