@@ -33,11 +33,8 @@ class ActionViewController: UIViewController {
 
         adblockPlus = AdblockPlusShared()
 
-        guard let uwExtension = (extensionContext?.inputItems as? [NSExtensionItem]) else { return }
-        for item in uwExtension {
-            guard let attachments = item.attachments else { continue }
-            guard let uwAttachments = (attachments as? [NSItemProvider]) else { return }
-            for itemProvider in uwAttachments {
+        for item in extensionContext?.inputItems as? [NSExtensionItem] ?? [] {
+            for itemProvider in item.attachments as? [NSItemProvider] ?? [] {
                 let typeIdentifier = kUTTypePropertyList as String
                 if itemProvider.hasItemConformingToTypeIdentifier(typeIdentifier) {
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
@@ -46,16 +43,15 @@ class ActionViewController: UIViewController {
                                             if error != nil { return }
                                             DispatchQueue.main.async {
 
-                                                guard let preprocessingResults = item as? NSDictionary else { return }
-                                                let results = preprocessingResults[NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary
-                                                guard let uwResults = results else { return }
-                                                let baseURI = uwResults["baseURI"] as? String
-                                                guard let uwBaseURI = baseURI else { return }
-                                                let hostname = uwBaseURI as NSString
-                                                let whitelistedHostname = hostname.whitelistedHostname()
-                                                self?.website = uwBaseURI
-                                                self?.addressField.text = whitelistedHostname
-                                                self?.descriptionField.text = uwResults["title"] as? String
+                                                if let results = (item as? NSDictionary)?[NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary {
+                                                    if let baseURI = results["baseURI"] as? String {
+                                                        let hostname = baseURI as NSString
+                                                        let whitelistedHostname = hostname.whitelistedHostname()
+                                                        self?.website = baseURI
+                                                        self?.addressField.text = whitelistedHostname
+                                                        self?.descriptionField.text = results["title"] as? String
+                                                    }
+                                                }
                                             }
                     })
                 }
@@ -85,18 +81,19 @@ class ActionViewController: UIViewController {
             return
         }
 
-        guard let uwWebsite = website as NSString? else { return }
-        let whitelistedWebsite = uwWebsite.whitelistedHostname()
-        let time = Date.timeIntervalSinceReferenceDate
-        components = URLComponents()
-        components?.scheme = "http"
-        components?.host = "localhost"
-        components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
-        components?.query = String.init(format: "website=%@", whitelistedWebsite!)
+        if let uwWebsite = website as NSString? {
+            let whitelistedWebsite = uwWebsite.whitelistedHostname()
+            let time = Date.timeIntervalSinceReferenceDate
+            components = URLComponents()
+            components?.scheme = "http"
+            components?.host = "localhost"
+            components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
+            components?.query = String.init(format: "website=%@", whitelistedWebsite!)
 
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
-            self.completeAndExit()
-        })
+            extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
+                self.completeAndExit()
+            })
+        }
     }
 
     func completeAndExit() {
@@ -106,19 +103,21 @@ class ActionViewController: UIViewController {
         // Because only one process can use a background session at a time,
         // you need to create a different background session for the containing app and each of its app extensions.
         // (Each background session should have a unique identifier.)
-        guard let uwABP = adblockPlus else { return }
-        let identifier = uwABP.generateBackgroundNotificationSessionConfigurationIdentifier()
-        let session = uwABP.backgroundNotificationSession(withIdentifier: identifier, delegate: nil)
+        if let uwABP = adblockPlus {
+            let identifier = uwABP.generateBackgroundNotificationSessionConfigurationIdentifier()
+            let session = uwABP.backgroundNotificationSession(withIdentifier: identifier, delegate: nil)
 
-        // Fake URL, request will definitely fail, hopefully the invalid url will be denied by iOS itself.
-        guard let uwURL = components?.url else { return }
+            // Fake URL, request will definitely fail, hopefully the invalid url will be denied by iOS itself.
+            if let uwURL = components?.url {
 
-        // Start download request with fake URL
-        let task = session.downloadTask(with: uwURL)
-        task.resume()
-        session.finishTasksAndInvalidate()
+                // Start download request with fake URL
+                let task = session.downloadTask(with: uwURL)
+                task.resume()
+                session.finishTasksAndInvalidate()
 
-        // Let the host application to handle the result of download task
-        exit(0)
+                // Let the host application to handle the result of download task
+                exit(0)
+            }
+        }
     }
 }
