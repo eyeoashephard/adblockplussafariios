@@ -40,19 +40,17 @@ class ActionViewController: UIViewController {
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
                                           options: nil,
                                           completionHandler: { [weak self] item, error in
-                                            if error != nil { return }
-                                            DispatchQueue.main.async {
-
-                                                if let results = (item as? NSDictionary)?[NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary {
-                                                    if let baseURI = results["baseURI"] as? String {
-                                                        let hostname = baseURI as NSString
+											guard let uwItem = item as? [String: NSDictionary], error == nil else { return }
+											DispatchQueue.main.async {
+												if let results = uwItem[NSExtensionJavaScriptPreprocessingResultsKey],
+													let baseURI = results["baseURI"] as? String {
+														let hostname = baseURI as NSString
                                                         let whitelistedHostname = hostname.whitelistedHostname()
                                                         self?.website = baseURI
                                                         self?.addressField.text = whitelistedHostname
                                                         self?.descriptionField.text = results["title"] as? String
-                                                    }
-                                                }
-                                            }
+												  }
+											}
                     })
                 }
             }
@@ -64,36 +62,31 @@ class ActionViewController: UIViewController {
         UIView.transition(with: view,
                           duration: 0.4,
                           options: [.transitionCrossDissolve, .showHideTransitionViews],
-                          animations: {
-                            self.view.isHidden = false
-        },
+                          animations: { self.view.isHidden = false },
                           completion: nil)
     }
 
     @IBAction func onCancelButtonTouched(_ sender: UIButton) {
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
-        return
     }
 
     @IBAction func onDoneButtonTouched(_ sender: UIButton) {
-        if website == nil {
+		guard let uwWebsite = website as NSString? else {
             extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
             return
         }
 
-        if let uwWebsite = website as NSString? {
-            let whitelistedWebsite = uwWebsite.whitelistedHostname()
-            let time = Date.timeIntervalSinceReferenceDate
-            components = URLComponents()
-            components?.scheme = "http"
-            components?.host = "localhost"
-            components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
-            components?.query = String.init(format: "website=%@", whitelistedWebsite!)
+		let whitelistedWebsite = uwWebsite.whitelistedHostname()
+        let time = Date.timeIntervalSinceReferenceDate
+        components = URLComponents()
+        components?.scheme = "http"
+        components?.host = "localhost"
+        components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
+        components?.query = String.init(format: "website=%@", whitelistedWebsite!)
 
-            extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
-                self.completeAndExit()
-            })
-        }
+        extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
+            self.completeAndExit()
+        })
     }
 
     func completeAndExit() {
