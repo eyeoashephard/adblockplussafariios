@@ -20,19 +20,19 @@ import SafariServices
 import UIKit
 
 class ActionViewController: UIViewController {
-
+    
     var adblockPlus: AdblockPlusShared?
     var website: String?
     var components: URLComponents?
-
+    
     @IBOutlet weak var descriptionField: UITextField!
     @IBOutlet weak var addressField: UITextField!
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         adblockPlus = AdblockPlusShared()
-
+        
         for item in extensionContext?.inputItems as? [NSExtensionItem] ?? [] {
             for itemProvider in item.attachments as? [NSItemProvider] ?? [] {
                 let typeIdentifier = kUTTypePropertyList as String
@@ -40,23 +40,23 @@ class ActionViewController: UIViewController {
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
                                           options: nil,
                                           completionHandler: { [weak self] item, error in
-											guard let uwItem = item as? [String: NSDictionary], error == nil else { return }
-											DispatchQueue.main.async {
-												if let results = uwItem[NSExtensionJavaScriptPreprocessingResultsKey],
-													let baseURI = results["baseURI"] as? String {
-														let hostname = baseURI as NSString
-                                                        let whitelistedHostname = hostname.whitelistedHostname()
-                                                        self?.website = baseURI
-                                                        self?.addressField.text = whitelistedHostname
-                                                        self?.descriptionField.text = results["title"] as? String
-												  }
-											}
+                                            guard let uwItem = item as? [String: NSDictionary], error == nil else { return }
+                                            DispatchQueue.main.async {
+                                                if let results = uwItem[NSExtensionJavaScriptPreprocessingResultsKey],
+                                                    let baseURI = results["baseURI"] as? String {
+                                                    let hostname = baseURI as NSString
+                                                    let whitelistedHostname = hostname.whitelistedHostname()
+                                                    self?.website = baseURI
+                                                    self?.addressField.text = whitelistedHostname
+                                                    self?.descriptionField.text = results["title"] as? String
+                                                }
+                                            }
                     })
                 }
             }
         }
     }
-
+    
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         UIView.transition(with: view,
@@ -65,30 +65,32 @@ class ActionViewController: UIViewController {
                           animations: { self.view.isHidden = false },
                           completion: nil)
     }
-
+    
     @IBAction func onCancelButtonTouched(_ sender: UIButton) {
         extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
     }
-
+    
     @IBAction func onDoneButtonTouched(_ sender: UIButton) {
-		guard let uwWebsite = website as NSString? else {
+        guard let uwWebsite = website as NSString? else {
             extensionContext?.completeRequest(returningItems: nil, completionHandler: nil)
             return
         }
-
-		let whitelistedWebsite = uwWebsite.whitelistedHostname()
-        let time = Date.timeIntervalSinceReferenceDate
-        components = URLComponents()
-        components?.scheme = "http"
-        components?.host = "localhost"
-        components?.path = String.init(format: "/invalidimage-%d.png", Int(time))
-        components?.query = String.init(format: "website=%@", whitelistedWebsite!)
-
-        extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
-            self.completeAndExit()
-        })
+        
+        let whitelistedWebsite = uwWebsite.whitelistedHostname()
+        if let uwWhitelistedWebsite = whitelistedWebsite {
+            let time = Date.timeIntervalSinceReferenceDate
+            components = URLComponents()
+            components?.scheme = "http"
+            components?.host = "localhost"
+            components?.path = String(format: "/invalidimage-%d.png", Int(time))
+            components?.query = String(format: "website=%@", uwWhitelistedWebsite)
+            
+            extensionContext?.completeRequest(returningItems: nil, completionHandler: { _ in
+                self.completeAndExit()
+            })
+        }
     }
-
+    
     func completeAndExit() {
         // Session must be created with new identifier, see Apple documentation:
         // https://developer.apple.com/library/prerelease/ios/documentation/General/Conceptual/ExtensibilityPG/ExtensionScenarios.html
@@ -99,15 +101,15 @@ class ActionViewController: UIViewController {
         if let uwABP = adblockPlus {
             let identifier = uwABP.generateBackgroundNotificationSessionConfigurationIdentifier()
             let session = uwABP.backgroundNotificationSession(withIdentifier: identifier, delegate: nil)
-
+            
             // Fake URL, request will definitely fail, hopefully the invalid url will be denied by iOS itself.
             if let uwURL = components?.url {
-
+                
                 // Start download request with fake URL
                 let task = session.downloadTask(with: uwURL)
                 task.resume()
                 session.finishTasksAndInvalidate()
-
+                
                 // Let the host application to handle the result of download task
                 exit(0)
             }
