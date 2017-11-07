@@ -40,18 +40,18 @@ class ActionViewController: UIViewController {
                     itemProvider.loadItem(forTypeIdentifier: typeIdentifier,
                                           options: nil,
                                           completionHandler: { [weak self] item, error in
-                                            guard let uwItem = item as? [String: NSDictionary], error == nil else { return }
-                                            DispatchQueue.main.async {
-                                                if let results = uwItem[NSExtensionJavaScriptPreprocessingResultsKey],
-                                                    let baseURI = results["baseURI"] as? String {
-                                                    let hostname = baseURI as NSString
-                                                    let whitelistedHostname = hostname.whitelistedHostname()
-                                                    self?.website = baseURI
-                                                    self?.addressField.text = whitelistedHostname
-                                                    self?.descriptionField.text = results["title"] as? String
-                                                }
-                                            }
-                    })
+                                              guard let uwItem = item as? [String: NSDictionary], error == nil else { return }
+                                              DispatchQueue.main.async {
+                                                  if let results = uwItem[NSExtensionJavaScriptPreprocessingResultsKey],
+                                                      let baseURI = results["baseURI"] as? String {
+                                                      let hostname = baseURI as NSString
+                                                      let whitelistedHostname = hostname.whitelistedHostname()
+                                                      self?.website = baseURI
+                                                      self?.addressField.text = whitelistedHostname
+                                                      self?.descriptionField.text = results["title"] as? String
+                                                  }
+                                              }
+                                          })
                 }
             }
         }
